@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Log in — 2026 Sticker Book{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-12">
+    <div class="bg-paper text-ink rounded-lg p-8 shadow-lg">
+        <h1 class="font-display text-3xl mb-1">LOG IN</h1>
+        <p class="text-sm text-ink/70 mb-6">Get back to your collection.</p>
+
+        {% if error %}
+        <div class="mb-4 text-sm text-red-700 bg-red-100 border border-red-300 rounded-md px-3 py-2">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="/login" method="post" class="space-y-4">
+            <div>
+                <label for="username" class="block text-sm font-medium mb-1">Username</label>
+                <input id="username" name="username" type="text" required autofocus
+                       class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium mb-1">Password</label>
+                <input id="password" name="password" type="password" required
+                       class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
+            </div>
+            <button type="submit"
+                    class="w-full bg-pitch hover:bg-pitch-dark text-white font-medium rounded-md py-2 transition-colors">
+                Log in
+            </button>
+        </form>
+
+        <p class="text-sm text-ink/70 mt-6">
+            New here? <a href="/register" class="text-pitch-dark font-medium hover:underline">Create an account</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Register — 2026 Sticker Book{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-12">
+    <div class="bg-paper text-ink rounded-lg p-8 shadow-lg">
+        <h1 class="font-display text-3xl mb-1">CREATE ACCOUNT</h1>
+        <p class="text-sm text-ink/70 mb-6">Start tracking your collection.</p>
+
+        {% if error %}
+        <div class="mb-4 text-sm text-red-700 bg-red-100 border border-red-300 rounded-md px-3 py-2">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="/register" method="post" class="space-y-4">
+            <div>
+                <label for="username" class="block text-sm font-medium mb-1">Username</label>
+                <input id="username" name="username" type="text" required autofocus minlength="3" maxlength="32"
+                       class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
+            </div>
+            <div>
+                <label for="email" class="block text-sm font-medium mb-1">Email</label>
+                <input id="email" name="email" type="email" required
+                       class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium mb-1">Password</label>
+                <input id="password" name="password" type="password" required minlength="8"
+                       class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
+                <p class="text-xs text-ink/60 mt-1">At least 8 characters.</p>
+            </div>
+            <button type="submit"
+                    class="w-full bg-pitch hover:bg-pitch-dark text-white font-medium rounded-md py-2 transition-colors">
+                Create account
+            </button>
+        </form>
+
+        <p class="text-sm text-ink/70 mt-6">
+            Already have an account? <a href="/login" class="text-pitch-dark font-medium hover:underline">Log in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

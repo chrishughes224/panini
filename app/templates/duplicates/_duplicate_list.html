@@ -1,0 +1,23 @@
+<div id="duplicate-list" class="flex flex-col gap-2">
+    {% if not duplicates %}
+    <div class="bg-paper text-ink rounded-lg px-4 py-6 text-center">
+        <p class="font-display text-lg">No duplicates right now</p>
+        <p class="text-sm text-ink/60 mt-1">Spare stickers you can trade will show up here.</p>
+    </div>
+    {% else %}
+    {% for d in duplicates %}
+    <div class="bg-paper text-ink rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <span class="font-display text-lg bg-gold/20 text-ink px-2.5 py-1 rounded-md">{{ d.sticker.code }}</span>
+            <span class="text-sm text-ink/70">{{ d.quantity }} owned <span class="text-ink/40">({{ d.quantity - 1 }} spare)</span></span>
+        </div>
+        <button hx-post="/duplicates/remove/{{ d.sticker.code }}"
+                hx-target="#duplicate-list"
+                hx-swap="outerHTML"
+                class="text-sm font-medium bg-ink/5 hover:bg-ink/10 text-ink px-3 py-1.5 rounded-md transition-colors">
+            Traded one away
+        </button>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>

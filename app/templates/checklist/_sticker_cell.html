@@ -1,0 +1,15 @@
+<div id="sticker-{{ item.sticker.code }}"
+     class="sticker-slot{% if item.status.value != 'not_owned' %} is-owned{% endif %}{% if item.status.value == 'duplicate' %} is-duplicate{% endif %}"
+     hx-post="/checklist/toggle/{{ item.sticker.code }}"
+     hx-vals="js:{edit_mode: window.editMode === true}"
+     hx-target="this"
+     hx-swap="outerHTML"
+     title="{{ item.sticker.code }}{% if item.status.value == 'duplicate' %} — {{ item.quantity }} owned{% endif %}">
+    {{ item.sticker.code }}
+    {% if item.status.value == 'duplicate' %}
+    <span class="duplicate-badge">{{ item.quantity }}</span>
+    {% endif %}
+</div>
+{% if oob_summary %}
+{% include "checklist/_summary.html" %}
+{% endif %}

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>{% block title %}2026 Sticker Book{% endblock %}</title>
+
+    <!-- Type: Anton (display / sticker numbers, scoreboard feel) + Inter (UI/body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!--
+      Tailwind Play CDN (in-browser JIT). Chosen deliberately over the CLI build
+      step: this project has no Node toolchain, and the Play CDN keeps the app
+      genuinely "lightweight" with zero build pipeline. Note for production: the
+      Tailwind docs recommend the CLI/PostCSS build for anything beyond local
+      use - swap this out if this app ever needs to go further than a home
+      network deployment.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#14213D',
+                        'ink-light': '#1D2E52',
+                        paper: '#F3EEDF',
+                        pitch: '#2E8B57',
+                        'pitch-dark': '#256F46',
+                        gold: '#D4A537',
+                        slot: '#B9B2A0',
+                    },
+                    fontFamily: {
+                        display: ['"Anton"', 'sans-serif'],
+                        sans: ['"Inter"', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.12/htmx.min.js"></script>
+
+    <style>
+        /*
+          Hardcoded hex values here rather than Tailwind's `theme()` function:
+          the Play CDN's runtime only resolves `theme()` references that exist
+          in the DOM at the moment its script executes, which this <style>
+          block (parsed later, further down <head>) missed - every declaration
+          using theme() was silently dropped, leaving sticker cells with no
+          background or border color at all. Keep these in sync with the
+          `tailwind.config` colors above by hand.
+        */
+
+        /* The signature element: a "die-cut" sticker slot, echoing the printed
+           dashed outline on a physical album page where a sticker is missing,
+           filling to a solid panel once it's stuck in. */
+        .sticker-slot {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+            border-radius: 0.25rem;
+            border: 2px dashed #B9B2A0; /* colors.slot */
+            background-color: #F3EEDF; /* colors.paper */
+            color: #B9B2A0; /* colors.slot */
+            font-family: 'Anton', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 0.02em;
+            transition: transform 120ms ease, background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+        }
+        .sticker-slot:active {
+            transform: scale(0.94);
+        }
+        /* "Got" - a bold, saturated green, clearly distinct from the muted
+           grey/cream not-owned slot at a glance (no gradient/sheen effect,
+           which read as barely-there rather than a clear owned/not distinction). */
+        .sticker-slot.is-owned {
+            border: 2px solid #15803D;
+            background-color: #22C55E;
+            color: #052E13;
+            font-weight: 700;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+        }
+        .sticker-slot.is-duplicate {
+            border-color: #D4A537; /* colors.gold */
+        }
+        .duplicate-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 1.1rem;
+            height: 1.1rem;
+            padding: 0 3px;
+            border-radius: 9999px;
+            background-color: #D4A537; /* colors.gold */
+            color: #14213D; /* colors.ink */
+            font-family: 'Inter', sans-serif;
+            font-size: 0.6rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .sticker-slot { transition: none; }
+            .sticker-slot:active { transform: none; }
+        }
+    </style>
+
+    <!--
+      Chromium on Windows doesn't render country flag emoji as flags (a
+      long-standing, deliberate Chromium limitation - it defers to the OS,
+      which itself only partly supports them). This polyfill feature-detects
+      that gap and, only when needed, loads a small subsetted Twemoji font
+      scoped via `unicode-range` to just the flag codepoints - see the
+      `font-family` on `#export-text` in export/_dialog.html, which lists
+      "Twemoji Country Flags" first so browsers that loaded it use it.
+    -->
+    <script type="module">
+        import { polyfillCountryFlagEmojis } from "https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1.8/dist/index.mjs";
+        polyfillCountryFlagEmojis();
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full bg-ink text-paper font-sans">
+    <header class="border-b border-ink-light bg-ink">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/checklist" class="font-display text-xl tracking-wide text-paper">
+                2026 STICKER BOOK
+            </a>
+            {% if user %}
+            <nav class="flex items-center gap-4 text-sm font-medium">
+                <a href="/checklist" class="hover:text-pitch transition-colors">Checklist</a>
+                <a href="/duplicates" class="hover:text-gold transition-colors">Duplicates</a>
+                <details class="relative">
+                    <summary class="list-none cursor-pointer hover:text-gold transition-colors select-none">Export</summary>
+                    <div class="absolute right-0 mt-2 w-32 bg-paper text-ink rounded-md shadow-lg overflow-hidden z-10">
+                        <button type="button"
+                                hx-get="/export/needs"
+                                hx-target="#export-dialog-content"
+                                hx-swap="innerHTML"
+                                hx-on::after-request="document.getElementById('export-dialog').showModal()"
+                                onclick="this.closest('details').removeAttribute('open')"
+                                class="block w-full text-left px-3 py-2 hover:bg-ink/5 transition-colors">
+                            Needs
+                        </button>
+                        <button type="button"
+                                hx-get="/export/swaps"
+                                hx-target="#export-dialog-content"
+                                hx-swap="innerHTML"
+                                hx-on::after-request="document.getElementById('export-dialog').showModal()"
+                                onclick="this.closest('details').removeAttribute('open')"
+                                class="block w-full text-left px-3 py-2 hover:bg-ink/5 transition-colors">
+                            Swaps
+                        </button>
+                    </div>
+                </details>
+                <form action="/logout" method="post">
+                    <button type="submit" class="text-ink bg-paper/90 hover:bg-paper px-3 py-1.5 rounded-md transition-colors">
+                        Log out
+                    </button>
+                </form>
+            </nav>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <dialog id="export-dialog" class="bg-paper text-ink rounded-lg p-0 max-w-md w-[90vw] max-h-[85vh] overflow-y-auto backdrop:bg-ink/60">
+        <div class="p-5" id="export-dialog-content"></div>
+    </dialog>
+    <script>
+        document.getElementById('export-dialog').addEventListener('click', (event) => {
+            if (event.target.id === 'export-dialog') {
+                event.target.close();
+            }
+        });
+
+        function loadFlagImage(src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null); // one missing flag shouldn't sink the whole render
+                img.src = src;
+            });
+        }
+
+        function roundedRectPath(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        // Shrinks a font's size until `text` fits `maxWidth`, so an unusually
+        // long (non-condensed) number list doesn't overflow its card.
+        function fitFont(ctx, text, maxWidth, family, weight, startSize, minSize) {
+            let size = startSize;
+            while (size > minSize) {
+                ctx.font = `${weight} ${size}px "${family}", sans-serif`;
+                if (ctx.measureText(text).width <= maxWidth) break;
+                size -= 2;
+            }
+            return size;
+        }
+
+        // Renders a flag-card grid (one card per nation, real flag images
+        // from flagcdn.com) as a shareable PNG, drawn client-side onto a
+        // <canvas> - no server round-trip. Non-team stickers ("00", FWC, CC)
+        // have no national flag, so they're only in the plain-text list, not
+        // here - see `export_service.build_needs_rows` / `build_swaps_rows`.
+        async function generateExportImage(button, title) {
+            const originalLabel = button.textContent;
+            button.textContent = 'Generating…';
+            button.disabled = true;
+            const preview = document.getElementById('export-image-preview');
+            preview.innerHTML = '';
+            try {
+                const dataEl = document.getElementById('export-team-rows');
+                const rows = dataEl ? JSON.parse(dataEl.textContent) : [];
+
+                if (rows.length === 0) {
+                    const msg = document.createElement('p');
+                    msg.className = 'text-sm text-ink/60 mt-3';
+                    msg.textContent = 'No team stickers to show an image for.';
+                    preview.appendChild(msg);
+                    return;
+                }
+
+                await document.fonts.load('58px "Anton"');
+                await document.fonts.load('700 30px "Inter"');
+                await document.fonts.load('600 24px "Inter"');
+                await document.fonts.ready;
+
+                const flags = await Promise.all(
+                    rows.map((row) => loadFlagImage(`https://flagcdn.com/w160/${row.iso_code}.png`))
+                );
+
+                const width = 1080;
+                const outerPadding = 48;
+                const columns = 3;
+                const gap = 20;
+                const cardWidth = (width - outerPadding * 2 - (columns - 1) * gap) / columns;
+                const cardHeight = 116;
+                const flagBoxWidth = 84;
+                const flagBoxHeight = 56;
+                const cardPadding = 16;
+                const textX = cardPadding + flagBoxWidth + 18;
+                const maxNumbersWidth = cardWidth - textX - 12;
+
+                const titleTop = 96;
+                const subtitleTop = 190;
+                const gridTop = 260;
+                const rowsCount = Math.ceil(rows.length / columns);
+                const height = gridTop + rowsCount * (cardHeight + gap) - gap + 40 + 60;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#24070C';
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = '58px "Anton", sans-serif';
+                ctx.fillText('WORLD CUP STICKERS', width / 2, titleTop);
+
+                ctx.fillStyle = '#F0C238';
+                ctx.font = '76px "Anton", sans-serif';
+                ctx.fillText(title === 'Swaps' ? 'TO SWAP' : 'STILL NEED', width / 2, subtitleTop);
+                ctx.textAlign = 'left';
+
+                rows.forEach((row, i) => {
+                    const col = i % columns;
+                    const r = Math.floor(i / columns);
+                    const cardX = outerPadding + col * (cardWidth + gap);
+                    const cardY = gridTop + r * (cardHeight + gap);
+
+                    ctx.fillStyle = '#F3EEDF';
+                    roundedRectPath(ctx, cardX, cardY, cardWidth, cardHeight, 14);
+                    ctx.fill();
+
+                    const flagX = cardX + cardPadding;
+                    const flagY = cardY + (cardHeight - flagBoxHeight) / 2;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = 'rgba(20, 33, 61, 0.15)';
+                    ctx.lineWidth = 1.5;
+                    roundedRectPath(ctx, flagX, flagY, flagBoxWidth, flagBoxHeight, 8);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    const img = flags[i];
+                    if (img) {
+                        const scale = Math.min((flagBoxWidth - 6) / img.width, (flagBoxHeight - 6) / img.height);
+                        const drawW = img.width * scale;
+                        const drawH = img.height * scale;
+                        ctx.save();
+                        roundedRectPath(ctx, flagX + 3, flagY + 3, flagBoxWidth - 6, flagBoxHeight - 6, 5);
+                        ctx.clip();
+                        ctx.drawImage(img, flagX + (flagBoxWidth - drawW) / 2, flagY + (flagBoxHeight - drawH) / 2, drawW, drawH);
+                        ctx.restore();
+                    }
+
+                    ctx.fillStyle = '#14213D';
+                    ctx.font = '700 30px "Inter", sans-serif';
+                    ctx.fillText(row.code, cardX + textX, cardY + cardHeight / 2 - 6);
+
+                    const numbersSize = fitFont(ctx, row.numbers, maxNumbersWidth, 'Inter', 600, 24, 14);
+                    ctx.fillStyle = '#3A3A3A';
+                    ctx.font = `600 ${numbersSize}px "Inter", sans-serif`;
+                    ctx.fillText(row.numbers, cardX + textX, cardY + cardHeight / 2 + 26);
+                });
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(243, 238, 223, 0.45)';
+                ctx.font = '500 20px "Inter", sans-serif';
+                ctx.fillText('Made with the 2026 Sticker Book', width / 2, height - 26);
+                ctx.textAlign = 'left';
+
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                const url = URL.createObjectURL(blob);
+
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'w-full rounded-md border border-ink/10 mt-3';
+                preview.appendChild(img);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `sticker-book-${title.toLowerCase()}.png`;
+                link.className = 'mt-2 block w-full text-center bg-ink hover:bg-ink-light text-paper font-medium py-2 rounded-md transition-colors';
+                link.textContent = 'Download image';
+                preview.appendChild(link);
+            } finally {
+                button.textContent = originalLabel;
+                button.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

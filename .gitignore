@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment / secrets - contains the Gel DB connection string and password
+.env
+
+# Gel/EdgeDB local instance config - machine-specific, not meant to be
+# committed (see its own header comment)
+gel.local.toml
+
+# Compiled frontend assets - unused for now, Tailwind is loaded via CDN
+static/css/*.css
+
+# Editor/OS cruft
+.DS_Store

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Checklist — 2026 Sticker Book{% endblock %}
+{% block content %}
+
+<div class="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center">
+    <div class="flex-1">
+        {% include "checklist/_summary.html" %}
+    </div>
+    <button id="edit-mode-toggle" type="button" onclick="toggleEditMode()" aria-pressed="false"
+            class="shrink-0 flex items-center gap-2 rounded-full bg-slot/30 hover:bg-slot/40 px-4 py-2 text-sm font-medium transition-colors">
+        <span class="w-2.5 h-2.5 rounded-full bg-paper/70"></span>
+        <span id="edit-mode-label">Edit mode</span>
+    </button>
+</div>
+
+<p class="text-xs text-paper/60 mb-6">
+    Tap a sticker to add it. Tap it again for a duplicate. Switch on
+    <span class="font-medium">Edit mode</span> if you tapped one by mistake and need to undo it.
+</p>
+
+{% for section in sections %}
+<section class="mb-8">
+    <h2 class="font-display text-lg tracking-wide text-paper/90 mb-3">{{ section.title }}</h2>
+
+    {% for block in section.blocks %}
+    <div class="mb-4">
+        {% if block.team_name %}
+        <h3 class="text-xs uppercase tracking-wider text-paper/50 mb-1.5">
+            {{ block.team_name }} <span class="text-paper/30">({{ block.team_code }})</span>
+        </h3>
+        {% endif %}
+        <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
+            {% for item in block.items %}
+            {% include "checklist/_sticker_cell.html" %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</section>
+{% endfor %}
+
+<script>
+    window.editMode = false;
+    function toggleEditMode() {
+        window.editMode = !window.editMode;
+        const btn = document.getElementById('edit-mode-toggle');
+        const label = document.getElementById('edit-mode-label');
+        btn.setAttribute('aria-pressed', String(window.editMode));
+        btn.classList.toggle('bg-gold', window.editMode);
+        btn.classList.toggle('text-ink', window.editMode);
+        btn.classList.toggle('bg-slot/30', !window.editMode);
+        label.textContent = window.editMode ? 'Edit mode: tap to undo' : 'Edit mode';
+    }
+</script>
+{% endblock %}

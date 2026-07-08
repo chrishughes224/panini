@@ -1,0 +1,55 @@
+module default {
+    scalar type StickerKind extending enum<Special, Generic, Promo, Team>;
+
+    type User {
+        required username: str {
+            constraint exclusive;
+        }
+        required email: str {
+            constraint exclusive;
+        }
+        required password_hash: str;
+        required created_at: datetime {
+            default := datetime_current();
+        }
+    }
+
+    type Session {
+        required token: str {
+            constraint exclusive;
+        }
+        required user: User;
+        required created_at: datetime {
+            default := datetime_current();
+        }
+        required expires_at: datetime;
+
+        index on (.token);
+    }
+
+    type Sticker {
+        required code: str {
+            constraint exclusive;   # e.g. "MEX7", "FWC3", "CC12", "00"
+        }
+        required kind: StickerKind;
+        team_code: str;             # null for Special/Generic/Promo kinds
+        required sort_order: int32; # deterministic grid rendering order
+
+        index on (.sort_order);
+    }
+
+    type CollectionEntry {
+        required user: User;
+        required sticker: Sticker;
+        required quantity: int16 {
+            default := 1;
+            constraint min_value(1);
+        }
+        required updated_at: datetime {
+            default := datetime_current();
+        }
+
+        constraint exclusive on ((.user, .sticker));
+        index on (.user);
+    }
+}

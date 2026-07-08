@@ -1,0 +1,19 @@
+<div id="summary-bar"{% if oob_summary %} hx-swap-oob="true"{% endif %}
+     class="bg-paper text-ink rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+    <div>
+        <p class="font-display text-2xl leading-none">
+            {{ summary.total_collected }} <span class="text-ink/50">/ {{ summary.total_stickers }}</span>
+        </p>
+        <p class="text-xs text-ink/60 mt-0.5">{{ summary.percent_complete }}% collected</p>
+    </div>
+    <div class="flex-1 max-w-xs">
+        <div class="h-2 rounded-full bg-slot/30 overflow-hidden">
+            <div class="h-full bg-pitch rounded-full transition-all duration-300"
+                 style="width: {{ summary.percent_complete }}%"></div>
+        </div>
+    </div>
+    <div class="text-right">
+        <p class="font-display text-2xl leading-none text-gold">{{ summary.total_duplicates }}</p>
+        <p class="text-xs text-ink/60 mt-0.5">spares</p>
+    </div>
+</div>
