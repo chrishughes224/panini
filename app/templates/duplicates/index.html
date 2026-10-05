@@ -2,7 +2,68 @@
 {% block title %}Duplicates — 2026 Sticker Book{% endblock %}
 {% block content %}
 <h1 class="font-display text-2xl mb-1">DUPLICATES</h1>
-<p class="text-sm text-paper/60 mb-6">Stickers you've got spares of — remove one once you've traded it away.</p>
+<p class="text-sm text-paper/60 mb-6">
+    Stickers you've got spares of. Tap one to trade it away, or use the floating
+    <span class="font-medium">Trade Away</span> button to type a code instead.
+</p>
 
 {% include "duplicates/_duplicate_list.html" %}
+
+<!-- Floating Trade Away: same low-friction typed-code pattern as Quick
+     Add/Check on the checklist, for trading away a spare without hunting
+     for its row in the list. -->
+<div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+    <div id="trade-away-panel" class="hidden bg-paper text-ink rounded-lg shadow-xl p-3 w-64">
+        <div class="flex items-center justify-between mb-1.5">
+            <label for="trade-away-input" class="text-xs font-medium text-ink/60">Trade away</label>
+            <button type="button" onclick="toggleTradeAwayPanel()" class="text-ink/40 hover:text-ink text-lg leading-none">&times;</button>
+        </div>
+        <form hx-post="/duplicates/trade-away" hx-target="this" hx-swap="none" id="trade-away-form">
+            <div class="flex gap-2">
+                <input id="trade-away-input" name="code" type="text" required autocomplete="off"
+                       autocapitalize="characters" inputmode="text" placeholder="e.g. MEX6"
+                       class="flex-1 min-w-0 rounded-md border border-ink/15 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pitch">
+                <button type="submit" class="shrink-0 bg-pitch hover:bg-pitch-dark text-white text-sm font-medium px-3 rounded-md transition-colors">Trade</button>
+            </div>
+            <p class="text-[0.65rem] text-ink/40 mt-1.5">Spaces and casing don't matter - "mex 6" works fine. Only works on a sticker you have a spare of.</p>
+        </form>
+    </div>
+    <button id="trade-away-fab" type="button" onclick="toggleTradeAwayPanel()" aria-label="Trade away a duplicate sticker"
+            class="w-14 h-14 rounded-full bg-pitch hover:bg-pitch-dark text-white shadow-lg flex items-center justify-center transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+    </button>
+</div>
+
+<script>
+    function toggleTradeAwayPanel() {
+        const panel = document.getElementById('trade-away-panel');
+        const wasHidden = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden');
+        if (wasHidden) {
+            document.getElementById('trade-away-input').focus();
+        }
+    }
+
+    document.body.addEventListener('trade-away-result', (event) => {
+        const detail = event.detail;
+        if (!detail.ok) {
+            if (detail.reason === 'unknown') {
+                showSnackbar(`Unknown sticker: ${detail.code}`, 'error');
+            } else {
+                showSnackbar(`${detail.code} — no spare to trade`, 'need');
+            }
+        } else {
+            showSnackbar(`${detail.code} traded away`, 'added');
+        }
+        const input = document.getElementById('trade-away-input');
+        input.value = '';
+        input.focus();
+    });
+</script>
 {% endblock %}

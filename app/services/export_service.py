@@ -13,27 +13,9 @@ import re
 from dataclasses import dataclass
 
 from app.models.sticker import StickerStatus, StickerWithStatus
+from app.services.catalogue_data import TEAM_ISO_CODES
 
 _CODE_PATTERN = re.compile(r"^([A-Za-z]+)(\d+)$")
-
-# ISO 3166-1 alpha-2 codes (or a GB subdivision code for the home nations,
-# which have no ISO country code of their own) for each of the 48 team
-# prefixes. Used both to derive the flag emoji shown in the plain-text list
-# and as the flagcdn.com lookup code for the shareable image.
-_TEAM_ISO_CODES: dict[str, str] = {
-    "MEX": "MX", "RSA": "ZA", "KOR": "KR", "CZE": "CZ",
-    "CAN": "CA", "BIH": "BA", "QAT": "QA", "SUI": "CH",
-    "BRA": "BR", "MAR": "MA", "HAI": "HT", "SCO": "GB-SCT",
-    "USA": "US", "PAR": "PY", "AUS": "AU", "TUR": "TR",
-    "GER": "DE", "CUW": "CW", "CIV": "CI", "ECU": "EC",
-    "NED": "NL", "JPN": "JP", "SWE": "SE", "TUN": "TN",
-    "BEL": "BE", "EGY": "EG", "IRN": "IR", "NZL": "NZ",
-    "ESP": "ES", "CPV": "CV", "KSA": "SA", "URU": "UY",
-    "FRA": "FR", "SEN": "SN", "IRQ": "IQ", "NOR": "NO",
-    "ARG": "AR", "ALG": "DZ", "AUT": "AT", "JOR": "JO",
-    "POR": "PT", "COD": "CD", "UZB": "UZ", "COL": "CO",
-    "ENG": "GB-ENG", "CRO": "HR", "GHA": "GH", "PAN": "PA",
-}
 
 # England and Scotland aren't ISO countries, so their flags are Unicode
 # "tag sequence" subdivision flags rather than the usual two-letter
@@ -94,7 +76,7 @@ def _group_lines(items: list[StickerWithStatus]) -> str:
     bare, groups = _group_by_prefix(items)
     lines = [*bare]
     for prefix, numbers in groups.items():
-        iso_code = _TEAM_ISO_CODES.get(prefix)
+        iso_code = TEAM_ISO_CODES.get(prefix)
         label = f"{_flag_emoji(iso_code)} {prefix}" if iso_code else prefix
         lines.append(f"{label}: {', '.join(str(n) for n in sorted(numbers))}")
     return "\n".join(lines)
@@ -129,11 +111,11 @@ def _build_team_rows(items: list[StickerWithStatus]) -> list[TeamExportRow]:
     return [
         TeamExportRow(
             code=prefix,
-            iso_code=_TEAM_ISO_CODES[prefix].lower(),
+            iso_code=TEAM_ISO_CODES[prefix].lower(),
             numbers=_condense_ranges(sorted(numbers)),
         )
         for prefix, numbers in groups.items()
-        if prefix in _TEAM_ISO_CODES
+        if prefix in TEAM_ISO_CODES
     ]
 
 

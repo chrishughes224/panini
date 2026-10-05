@@ -2,21 +2,7 @@
 {% block title %}Checklist — 2026 Sticker Book{% endblock %}
 {% block content %}
 
-<div class="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center">
-    <div class="flex-1">
-        {% include "checklist/_summary.html" %}
-    </div>
-    <button id="edit-mode-toggle" type="button" onclick="toggleEditMode()" aria-pressed="false"
-            class="shrink-0 flex items-center gap-2 rounded-full bg-slot/30 hover:bg-slot/40 px-4 py-2 text-sm font-medium transition-colors">
-        <span class="w-2.5 h-2.5 rounded-full bg-paper/70"></span>
-        <span id="edit-mode-label">Edit mode</span>
-    </button>
-</div>
-
-<p class="text-xs text-paper/60 mb-6">
-    Tap a sticker to add it. Tap it again for a duplicate. Switch on
-    <span class="font-medium">Edit mode</span> if you tapped one by mistake and need to undo it.
-</p>
+{% include "checklist/_progress_panel.html" %}
 
 {% for section in sections %}
 <section class="mb-8">
@@ -24,10 +10,10 @@
 
     {% for block in section.blocks %}
     <div class="mb-4">
-        {% if block.team_name %}
-        <h3 class="text-xs uppercase tracking-wider text-paper/50 mb-1.5">
-            {{ block.team_name }} <span class="text-paper/30">({{ block.team_code }})</span>
-        </h3>
+        {% if block.progress %}
+        {% with team_progress = block.progress %}
+        {% include "checklist/_team_header.html" %}
+        {% endwith %}
         {% endif %}
         <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
             {% for item in block.items %}
@@ -39,17 +25,119 @@
 </section>
 {% endfor %}
 
+<!-- Floating Quick Add: a low-friction way to add several stickers typed in
+     quick succession (e.g. when opening a fresh packet) rather than
+     scrolling/hunting for each one in the grid. -->
+<div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+    <div id="check-panel" class="hidden bg-paper text-ink rounded-lg shadow-xl p-3 w-64">
+        <div class="flex items-center justify-between mb-1.5">
+            <label for="check-input" class="text-xs font-medium text-ink/60">Check</label>
+            <button type="button" onclick="toggleCheckPanel()" class="text-ink/40 hover:text-ink text-lg leading-none">&times;</button>
+        </div>
+        <form hx-post="/checklist/check" hx-target="this" hx-swap="none" id="check-form">
+            <div class="flex gap-2">
+                <input id="check-input" name="code" type="text" required autocomplete="off"
+                       autocapitalize="characters" inputmode="text" placeholder="e.g. MEX6"
+                       class="flex-1 min-w-0 rounded-md border border-ink/15 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pitch">
+                <button type="submit" class="shrink-0 bg-pitch hover:bg-pitch-dark text-white text-sm font-medium px-3 rounded-md transition-colors">Check</button>
+            </div>
+            <p class="text-[0.65rem] text-ink/40 mt-1.5">Spaces and casing don't matter - "mex 6" works fine. Doesn't change your collection.</p>
+        </form>
+    </div>
+    <div id="quick-add-panel" class="hidden bg-paper text-ink rounded-lg shadow-xl p-3 w-64">
+        <div class="flex items-center justify-between mb-1.5">
+            <label for="quick-add-input" class="text-xs font-medium text-ink/60">Quick add</label>
+            <button type="button" onclick="toggleQuickAddPanel()" class="text-ink/40 hover:text-ink text-lg leading-none">&times;</button>
+        </div>
+        <form hx-post="/checklist/quick-add" hx-target="this" hx-swap="none" id="quick-add-form">
+            <div class="flex gap-2">
+                <input id="quick-add-input" name="code" type="text" required autocomplete="off"
+                       autocapitalize="characters" inputmode="text" placeholder="e.g. MEX6"
+                       class="flex-1 min-w-0 rounded-md border border-ink/15 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pitch">
+                <button type="submit" class="shrink-0 bg-pitch hover:bg-pitch-dark text-white text-sm font-medium px-3 rounded-md transition-colors">Add</button>
+            </div>
+            <p class="text-[0.65rem] text-ink/40 mt-1.5">Spaces and casing don't matter - "mex 6" works fine.</p>
+        </form>
+    </div>
+    <button id="edit-mode-toggle" type="button" onclick="toggleEditMode()" aria-pressed="false" aria-label="Toggle edit mode"
+            class="w-14 h-14 rounded-full bg-pitch hover:bg-pitch-dark text-white shadow-lg flex items-center justify-center transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+    </button>
+    <button id="check-fab" type="button" onclick="toggleCheckPanel()" aria-label="Check whether a sticker is in the collection"
+            class="w-14 h-14 rounded-full bg-pitch hover:bg-pitch-dark text-white shadow-lg flex items-center justify-center transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+    </button>
+    <button id="quick-add-fab" type="button" onclick="toggleQuickAddPanel()" aria-label="Quick add a sticker"
+            class="w-14 h-14 rounded-full bg-pitch hover:bg-pitch-dark text-white shadow-lg flex items-center justify-center text-2xl leading-none transition-colors">
+        +
+    </button>
+</div>
+
 <script>
     window.editMode = false;
     function toggleEditMode() {
         window.editMode = !window.editMode;
         const btn = document.getElementById('edit-mode-toggle');
-        const label = document.getElementById('edit-mode-label');
         btn.setAttribute('aria-pressed', String(window.editMode));
+        btn.setAttribute('aria-label', window.editMode ? 'Edit mode on: tap a sticker to undo' : 'Toggle edit mode');
         btn.classList.toggle('bg-gold', window.editMode);
-        btn.classList.toggle('text-ink', window.editMode);
-        btn.classList.toggle('bg-slot/30', !window.editMode);
-        label.textContent = window.editMode ? 'Edit mode: tap to undo' : 'Edit mode';
+        btn.classList.toggle('hover:bg-gold/90', window.editMode);
+        btn.classList.toggle('bg-pitch', !window.editMode);
+        btn.classList.toggle('hover:bg-pitch-dark', !window.editMode);
     }
+
+    function toggleQuickAddPanel() {
+        const panel = document.getElementById('quick-add-panel');
+        const wasHidden = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden');
+        if (wasHidden) {
+            document.getElementById('quick-add-input').focus();
+        }
+    }
+
+    function toggleCheckPanel() {
+        const panel = document.getElementById('check-panel');
+        const wasHidden = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden');
+        if (wasHidden) {
+            document.getElementById('check-input').focus();
+        }
+    }
+
+    document.body.addEventListener('quick-add-result', (event) => {
+        const detail = event.detail;
+        if (!detail.ok) {
+            showSnackbar(`Unknown sticker: ${detail.code}`, 'error');
+        } else if (detail.status === 'duplicate') {
+            showSnackbar(`${detail.code} — already had it (now a duplicate)`, 'duplicate');
+        } else {
+            showSnackbar(`${detail.code} added`, 'added');
+        }
+        const input = document.getElementById('quick-add-input');
+        input.value = '';
+        input.focus();
+    });
+
+    document.body.addEventListener('check-result', (event) => {
+        const detail = event.detail;
+        if (!detail.ok) {
+            showSnackbar(`Unknown sticker: ${detail.code}`, 'error');
+        } else if (detail.status === 'not_owned') {
+            showSnackbar(`${detail.code} — Need`, 'need');
+        } else {
+            showSnackbar(`${detail.code} — Got`, 'got');
+        }
+        const input = document.getElementById('check-input');
+        input.value = '';
+        input.focus();
+    });
 </script>
 {% endblock %}

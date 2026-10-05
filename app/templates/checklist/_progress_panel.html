@@ -1,0 +1,48 @@
+<!-- The checklist page's upper layout: a full-width summary box across
+     the top, then below it the 12 World Cup groups (A-D, E-H, I-L) on the
+     left beside a single condensed heatmap box on the right, containing
+     all three heatmap sections (Special/Tournament, Countries, Coca-Cola
+     Promo) stacked with their own headings. The heatmap box's height is
+     dictated by its own content, not the groups grid, so a narrative box
+     sits underneath the Group I-L row to soak up the leftover height and
+     keep both columns' bottoms level. Always fully visible, no collapse. -->
+<div class="mb-6 flex flex-col gap-3 overflow-x-auto">
+    <div class="min-w-[750px]">
+        {% include "checklist/_summary.html" %}
+    </div>
+    <div class="flex gap-3 items-start min-w-[750px]">
+        <div class="flex-1 flex flex-col gap-3">
+            <div class="grid grid-cols-4 gap-3">
+                {% for group in group_progress %}
+                <div class="group-card bg-ink-light/50 rounded-lg p-3">
+                    <h4 class="text-[0.65rem] uppercase tracking-wider text-paper/40 mb-2">Group {{ group.letter }}</h4>
+                    <div class="flex flex-col gap-2">
+                        {% for team_progress in group.teams %}
+                        {% include "checklist/_team_progress_tile.html" %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="bg-ink-light/50 rounded-lg p-3">
+                <p class="text-xs text-paper/60">
+                    Tap a sticker to add it. Tap it again for a duplicate. Use the floating
+                    <span class="font-medium">Edit</span> button if you tapped one by mistake and need to undo it,
+                    <span class="font-medium">Quick Add</span> to type sticker codes instead of tapping, or
+                    <span class="font-medium">Check</span> to look one up without adding it.
+                </p>
+            </div>
+        </div>
+        <div class="bg-ink-light/50 rounded-lg p-3 flex flex-col gap-2 shrink-0 items-start">
+            {% with heatmap_id="heatmap-special", heatmap_title="Special/Tournament", heatmap_cells=heatmap.special_tournament %}
+            {% include "checklist/_heatmap_box.html" %}
+            {% endwith %}
+            {% with heatmap_id="heatmap-teams", heatmap_title="Countries", heatmap_cells=heatmap.teams %}
+            {% include "checklist/_heatmap_box.html" %}
+            {% endwith %}
+            {% with heatmap_id="heatmap-promo", heatmap_title="Coca-Cola Promo", heatmap_cells=heatmap.promo %}
+            {% include "checklist/_heatmap_box.html" %}
+            {% endwith %}
+        </div>
+    </div>
+</div>

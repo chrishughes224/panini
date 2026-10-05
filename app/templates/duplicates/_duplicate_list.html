@@ -1,23 +1,35 @@
-<div id="duplicate-list" class="flex flex-col gap-2">
-    {% if not duplicates %}
+<div id="duplicate-list"{% if oob %} hx-swap-oob="true"{% endif %}>
+    {% if not sections %}
     <div class="bg-paper text-ink rounded-lg px-4 py-6 text-center">
         <p class="font-display text-lg">No duplicates right now</p>
         <p class="text-sm text-ink/60 mt-1">Spare stickers you can trade will show up here.</p>
     </div>
     {% else %}
-    {% for d in duplicates %}
-    <div class="bg-paper text-ink rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-            <span class="font-display text-lg bg-gold/20 text-ink px-2.5 py-1 rounded-md">{{ d.sticker.code }}</span>
-            <span class="text-sm text-ink/70">{{ d.quantity }} owned <span class="text-ink/40">({{ d.quantity - 1 }} spare)</span></span>
+    {% for section in sections %}
+    <section class="mb-8">
+        <h2 class="font-display text-lg tracking-wide text-paper/90 mb-3">{{ section.title }}</h2>
+
+        {% for block in section.blocks %}
+        <div class="mb-4">
+            {% if block.progress %}
+            {% set spare_count = block.items|sum(attribute='quantity') - block.items|length %}
+            <h3 class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-paper/50 mb-1.5">
+                <img src="https://flagcdn.com/w40/{{ block.progress.iso_code }}.png" alt=""
+                     class="w-4 h-3 rounded-sm object-cover shrink-0 border border-paper/10">
+                <span>{{ block.progress.name }} <span class="text-paper/30">({{ block.progress.code }})</span></span>
+                <span class="ml-auto normal-case tracking-normal text-paper/40">
+                    {{ spare_count }} spare{{ 's' if spare_count != 1 else '' }}
+                </span>
+            </h3>
+            {% endif %}
+            <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
+                {% for item in block.items %}
+                {% include "duplicates/_duplicate_cell.html" %}
+                {% endfor %}
+            </div>
         </div>
-        <button hx-post="/duplicates/remove/{{ d.sticker.code }}"
-                hx-target="#duplicate-list"
-                hx-swap="outerHTML"
-                class="text-sm font-medium bg-ink/5 hover:bg-ink/10 text-ink px-3 py-1.5 rounded-md transition-colors">
-            Traded one away
-        </button>
-    </div>
+        {% endfor %}
+    </section>
     {% endfor %}
     {% endif %}
 </div>

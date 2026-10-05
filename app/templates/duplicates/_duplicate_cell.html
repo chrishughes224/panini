@@ -1,0 +1,13 @@
+<div class="sticker-slot is-owned is-duplicate"
+     hx-post="/duplicates/remove/{{ item.sticker.code }}"
+     hx-target="#duplicate-list"
+     hx-swap="outerHTML"
+     title="{{ item.sticker.code }}{% if item.sticker.subtitle %} — {{ item.sticker.subtitle }}{% endif %} — {{ item.quantity }} owned — tap to trade one away">
+    <span class="flex flex-col items-center leading-tight">
+        <span>{{ item.sticker.code }}</span>
+        {% if item.sticker.subtitle %}
+        <span class="text-[0.5rem] font-sans font-normal normal-case tracking-normal leading-none mt-0.5 opacity-70">{{ item.sticker.subtitle }}</span>
+        {% endif %}
+    </span>
+    <span class="duplicate-badge">{{ item.quantity }}</span>
+</div>

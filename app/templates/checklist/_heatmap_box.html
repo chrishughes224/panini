@@ -1,0 +1,22 @@
+<!-- Generic titled sticker-ownership heatmap section, reused for all three
+     of the "Progress" panel's independent heatmaps (Special/Tournament,
+     Countries, Coca-Cola Promo). Expects `heatmap_id`, `heatmap_title` and
+     `heatmap_cells` (a list of true/false/None - None renders blank) to be
+     set by the caller (see _progress_panel.html/_sticker_cell.html for
+     the "with" blocks that set them). These three sections are condensed
+     into one shared box (styled by the caller) rather than each carrying
+     its own background/padding, to avoid tripling the box chrome's height.
+     Same green/paper colours as the main checklist's sticker-slot cells. -->
+<div id="{{ heatmap_id }}"{% if oob %} hx-swap-oob="true"{% endif %}>
+    <h4 class="text-[0.65rem] uppercase tracking-wider text-paper/40 mb-1">{{ heatmap_title }}</h4>
+    <!-- Fixed whole-pixel cell size (not minmax(0, 1fr)/aspect-square) -
+         `1fr` columns round sub-pixel remainders differently per column to
+         make the total add up to the container width, which at ~7px cells
+         made some squares visibly wider than others. Fixed px columns and
+         rows have no remainder to distribute, so every cell is identical. -->
+    <div class="grid gap-px" style="grid-template-columns: repeat(20, 7px); grid-auto-rows: 7px;">
+        {% for owned in heatmap_cells %}
+        <div class="rounded-[1px] {% if owned is none %}bg-transparent{% elif owned %}bg-[#22C55E]{% else %}bg-[#F3EEDF]/25{% endif %}"></div>
+        {% endfor %}
+    </div>
+</div>

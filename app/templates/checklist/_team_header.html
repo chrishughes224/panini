@@ -1,0 +1,7 @@
+<h3 id="team-header-{{ team_progress.code }}"{% if oob %} hx-swap-oob="true"{% endif %}
+    class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-paper/50 mb-1.5">
+    <img src="https://flagcdn.com/w40/{{ team_progress.iso_code }}.png" alt=""
+         class="w-4 h-3 rounded-sm object-cover shrink-0 border border-paper/10">
+    <span>{{ team_progress.name }} <span class="text-paper/30">({{ team_progress.code }})</span></span>
+    <span class="ml-auto normal-case tracking-normal text-paper/40">{{ team_progress.collected }}/{{ team_progress.total }}</span>
+</h3>

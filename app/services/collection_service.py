@@ -15,7 +15,7 @@ from uuid import UUID
 
 import gel
 
-from app.models.collection import CollectionSummary, DuplicateEntry
+from app.models.collection import CollectionSummary
 from app.models.sticker import StickerKind, StickerOut, StickerWithStatus
 
 
@@ -57,6 +57,43 @@ async def get_collection_for_user(
         )
         for row in result
     ]
+
+
+async def get_sticker_status(
+    client: gel.AsyncIOClient, user_id: UUID, sticker_code: str
+) -> StickerWithStatus | None:
+    """Look up one sticker's current owned/not-owned status for this user,
+    without changing anything - used by the "Check" quick-lookup, as
+    opposed to `increment_sticker`/`decrement_sticker` which both mutate.
+
+    Returns None if `sticker_code` doesn't match any catalogue sticker.
+    """
+    row = await client.query_single(
+        """
+        select Sticker {
+            id, code, kind, team_code, sort_order,
+            quantity := assert_single((
+                select .<sticker[is CollectionEntry]
+                filter .user.id = <uuid>$user_id
+            ).quantity) ?? 0
+        }
+        filter .code = <str>$code
+        """,
+        user_id=user_id,
+        code=sticker_code,
+    )
+    if row is None:
+        return None
+    return StickerWithStatus.from_sticker_and_quantity(
+        sticker=StickerOut(
+            id=row.id,
+            code=row.code,
+            kind=StickerKind(row.kind),
+            team_code=row.team_code,
+            sort_order=row.sort_order,
+        ),
+        quantity=row.quantity,
+    )
 
 
 async def increment_sticker(
@@ -144,36 +181,6 @@ async def decrement_sticker(
     return StickerWithStatus.from_sticker_and_quantity(sticker, row.quantity)
 
 
-async def list_duplicates(
-    client: gel.AsyncIOClient, user_id: UUID
-) -> list[DuplicateEntry]:
-    """All stickers this user owns 2+ of, for the Duplicates view."""
-    result = await client.query(
-        """
-        select CollectionEntry {
-            quantity,
-            sticker: { id, code, kind, team_code, sort_order }
-        }
-        filter .user.id = <uuid>$user_id and .quantity >= 2
-        order by .sticker.sort_order
-        """,
-        user_id=user_id,
-    )
-    return [
-        DuplicateEntry(
-            sticker=StickerOut(
-                id=row.sticker.id,
-                code=row.sticker.code,
-                kind=StickerKind(row.sticker.kind),
-                team_code=row.sticker.team_code,
-                sort_order=row.sticker.sort_order,
-            ),
-            quantity=row.quantity,
-        )
-        for row in result
-    ]
-
-
 async def remove_one_duplicate(
     client: gel.AsyncIOClient, user_id: UUID, sticker_code: str
 ) -> StickerWithStatus:
@@ -185,6 +192,28 @@ async def remove_one_duplicate(
     the same.
     """
     return await decrement_sticker(client, user_id, sticker_code)
+
+
+async def count_owned_for_team(
+    client: gel.AsyncIOClient, user_id: UUID, team_code: str
+) -> int:
+    """How many of this team's stickers the user owns (quantity >= 1).
+
+    Used to refresh a single team's progress tile after a tap/quick-add,
+    without re-fetching the whole 992-sticker collection.
+    """
+    return await client.query_single(
+        """
+        select count(
+            Sticker filter .team_code = <str>$team_code and exists (
+                select .<sticker[is CollectionEntry]
+                filter .user.id = <uuid>$user_id and .quantity >= 1
+            )
+        )
+        """,
+        team_code=team_code,
+        user_id=user_id,
+    )
 
 
 async def get_collection_summary(

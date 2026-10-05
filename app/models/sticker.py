@@ -41,6 +41,20 @@ class StickerOut(BaseModel):
     team_code: str | None
     sort_order: int
 
+    @property
+    def subtitle(self) -> str | None:
+        """Small designation shown under a team sticker's number: #1 in
+        every nation's set is a "Badge" sticker, #13 is a "Team Group"
+        sticker. Doesn't apply to Special/Generic/Promo stickers."""
+        if self.kind != StickerKind.TEAM or self.team_code is None:
+            return None
+        number = int(self.code[len(self.team_code):])
+        if number == 1:
+            return "Badge"
+        if number == 13:
+            return "Team Group"
+        return None
+
 
 class StickerWithStatus(BaseModel):
     """A sticker combined with the current user's ownership state.

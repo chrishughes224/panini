@@ -5,15 +5,18 @@
             {{ summary.total_collected }} <span class="text-ink/50">/ {{ summary.total_stickers }}</span>
         </p>
         <p class="text-xs text-ink/60 mt-0.5">{{ summary.percent_complete }}% collected</p>
-    </div>
-    <div class="flex-1 max-w-xs">
-        <div class="h-2 rounded-full bg-slot/30 overflow-hidden">
+        <div class="w-full h-2 rounded-full bg-slot/30 overflow-hidden mt-1.5">
             <div class="h-full bg-pitch rounded-full transition-all duration-300"
                  style="width: {{ summary.percent_complete }}%"></div>
         </div>
+        <p class="text-xs text-ink/40 mt-1.5">Minimum number of packs required: {{ summary.min_packs_required }}</p>
     </div>
+
     <div class="text-right">
         <p class="font-display text-2xl leading-none text-gold">{{ summary.total_duplicates }}</p>
         <p class="text-xs text-ink/60 mt-0.5">spares</p>
+        {% if summary.spare_packs_caption %}
+        <p class="text-xs text-ink/40 mt-0.5">{{ summary.spare_packs_caption }}</p>
+        {% endif %}
     </div>
 </div>

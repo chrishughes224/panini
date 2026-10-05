@@ -1,15 +1,38 @@
 <div id="sticker-{{ item.sticker.code }}"
+     {% if oob_cell %}hx-swap-oob="true"{% endif %}
      class="sticker-slot{% if item.status.value != 'not_owned' %} is-owned{% endif %}{% if item.status.value == 'duplicate' %} is-duplicate{% endif %}"
      hx-post="/checklist/toggle/{{ item.sticker.code }}"
      hx-vals="js:{edit_mode: window.editMode === true}"
      hx-target="this"
      hx-swap="outerHTML"
-     title="{{ item.sticker.code }}{% if item.status.value == 'duplicate' %} — {{ item.quantity }} owned{% endif %}">
-    {{ item.sticker.code }}
+     title="{{ item.sticker.code }}{% if item.sticker.subtitle %} — {{ item.sticker.subtitle }}{% endif %}{% if item.status.value == 'duplicate' %} — {{ item.quantity }} owned{% endif %}">
+    <span class="flex flex-col items-center leading-tight">
+        <span>{{ item.sticker.code }}</span>
+        {% if item.sticker.subtitle %}
+        <span class="text-[0.5rem] font-sans font-normal normal-case tracking-normal leading-none mt-0.5 opacity-70">{{ item.sticker.subtitle }}</span>
+        {% endif %}
+    </span>
     {% if item.status.value == 'duplicate' %}
     <span class="duplicate-badge">{{ item.quantity }}</span>
     {% endif %}
 </div>
 {% if oob_summary %}
 {% include "checklist/_summary.html" %}
+{% endif %}
+{% if oob_heatmap %}
+{% with oob=true, heatmap_id="heatmap-special", heatmap_title="Special/Tournament", heatmap_cells=heatmap.special_tournament %}
+{% include "checklist/_heatmap_box.html" %}
+{% endwith %}
+{% with oob=true, heatmap_id="heatmap-teams", heatmap_title="Countries", heatmap_cells=heatmap.teams %}
+{% include "checklist/_heatmap_box.html" %}
+{% endwith %}
+{% with oob=true, heatmap_id="heatmap-promo", heatmap_title="Coca-Cola Promo", heatmap_cells=heatmap.promo %}
+{% include "checklist/_heatmap_box.html" %}
+{% endwith %}
+{% endif %}
+{% if team_progress %}
+{% with oob=true %}
+{% include "checklist/_team_progress_tile.html" %}
+{% include "checklist/_team_header.html" %}
+{% endwith %}
 {% endif %}

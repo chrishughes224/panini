@@ -43,6 +43,40 @@ TEAM_TO_GROUP: dict[str, str] = {
     for team_code in team_codes
 }
 
+# ISO 3166-1 alpha-2 codes (or a GB subdivision code for the home nations,
+# which have no ISO country code of their own) for each of the 48 team
+# prefixes - used for flag lookups (flagcdn.com images, emoji derivation).
+TEAM_ISO_CODES: dict[str, str] = {
+    "MEX": "MX", "RSA": "ZA", "KOR": "KR", "CZE": "CZ",
+    "CAN": "CA", "BIH": "BA", "QAT": "QA", "SUI": "CH",
+    "BRA": "BR", "MAR": "MA", "HAI": "HT", "SCO": "GB-SCT",
+    "USA": "US", "PAR": "PY", "AUS": "AU", "TUR": "TR",
+    "GER": "DE", "CUW": "CW", "CIV": "CI", "ECU": "EC",
+    "NED": "NL", "JPN": "JP", "SWE": "SE", "TUN": "TN",
+    "BEL": "BE", "EGY": "EG", "IRN": "IR", "NZL": "NZ",
+    "ESP": "ES", "CPV": "CV", "KSA": "SA", "URU": "UY",
+    "FRA": "FR", "SEN": "SN", "IRQ": "IQ", "NOR": "NO",
+    "ARG": "AR", "ALG": "DZ", "AUT": "AT", "JOR": "JO",
+    "POR": "PT", "COD": "CD", "UZB": "UZ", "COL": "CO",
+    "ENG": "GB-ENG", "CRO": "HR", "GHA": "GH", "PAN": "PA",
+}
+
+# Full display names for each of the 48 team prefixes.
+TEAM_NAMES: dict[str, str] = {
+    "MEX": "Mexico", "RSA": "South Africa", "KOR": "South Korea", "CZE": "Czech Republic",
+    "CAN": "Canada", "BIH": "Bosnia & Herzegovina", "QAT": "Qatar", "SUI": "Switzerland",
+    "BRA": "Brazil", "MAR": "Morocco", "HAI": "Haiti", "SCO": "Scotland",
+    "USA": "United States", "PAR": "Paraguay", "AUS": "Australia", "TUR": "Turkey",
+    "GER": "Germany", "CUW": "Curaçao", "CIV": "Ivory Coast", "ECU": "Ecuador",
+    "NED": "Netherlands", "JPN": "Japan", "SWE": "Sweden", "TUN": "Tunisia",
+    "BEL": "Belgium", "EGY": "Egypt", "IRN": "Iran", "NZL": "New Zealand",
+    "ESP": "Spain", "CPV": "Cape Verde", "KSA": "Saudi Arabia", "URU": "Uruguay",
+    "FRA": "France", "SEN": "Senegal", "IRQ": "Iraq", "NOR": "Norway",
+    "ARG": "Argentina", "ALG": "Algeria", "AUT": "Austria", "JOR": "Jordan",
+    "POR": "Portugal", "COD": "DR Congo", "UZB": "Uzbekistan", "COL": "Colombia",
+    "ENG": "England", "CRO": "Croatia", "GHA": "Ghana", "PAN": "Panama",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class CatalogueRow:
