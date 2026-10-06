@@ -1,7 +1,7 @@
 """One-off script to populate the canonical 992-sticker catalogue.
 
 Run with:
-    uv run python scripts/seed_catalogue.py
+    uv run python -m scripts.seed_catalogue
 
 Idempotent (see `app.services.seeding`), so safe to re-run.
 """

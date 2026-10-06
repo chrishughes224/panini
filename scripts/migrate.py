@@ -1,7 +1,7 @@
 """Apply pending SQL migrations to the database in DATABASE_URL.
 
 Run with:
-    uv run python scripts/migrate.py
+    uv run python -m scripts.migrate
 """
 
 from __future__ import annotations
