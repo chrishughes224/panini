@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-import gel
+import asyncpg
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/checklist", tags=["checklist"])
 async def checklist_index(
     request: Request,
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     stickers = await collection_service.get_collection_for_user(client, user.id)
     summary = await collection_service.get_collection_summary(client, user.id)
@@ -59,7 +59,7 @@ async def checklist_index(
     )
 
 
-async def _heatmap_for(client: gel.AsyncIOClient, user_id: UUID) -> HeatmapData:
+async def _heatmap_for(client: asyncpg.Pool, user_id: UUID) -> HeatmapData:
     """Recompute the "Progress" panel's three heatmaps after a tap/quick-add
     - cheap enough (992 rows, local DB) to just refetch rather than patch a
     single cell client-side."""
@@ -68,7 +68,7 @@ async def _heatmap_for(client: gel.AsyncIOClient, user_id: UUID) -> HeatmapData:
 
 
 async def _team_progress_for(
-    client: gel.AsyncIOClient, user_id: UUID, team_code: str | None
+    client: asyncpg.Pool, user_id: UUID, team_code: str | None
 ) -> TeamProgress | None:
     """Build the up-to-date progress tile for one team, or None if the
     sticker just touched isn't part of a team (e.g. "00", FWC, CC)."""
@@ -90,7 +90,7 @@ async def toggle_sticker(
     code: str,
     edit_mode: bool = Form(False),
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     """Handle a single tap on one sticker cell.
 
@@ -126,7 +126,7 @@ async def quick_add_sticker(
     request: Request,
     code: str = Form(...),
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     """Quick-add a sticker by typed code (e.g. from a freshly opened packet).
 
@@ -179,7 +179,7 @@ async def quick_add_sticker(
 async def check_sticker(
     code: str = Form(...),
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     """Look up whether a typed sticker code is already in the collection,
     without adding it - a read-only counterpart to Quick Add for checking

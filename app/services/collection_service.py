@@ -7,60 +7,54 @@ and 3.6):
   - Edit-mode tap -> `decrement_sticker`: duplicate -> owned -> not-owned,
     with the underlying row deleted once quantity would drop below 1 (kept
     consistent with lazy row creation - a quantity-0 row should never exist).
+
+Every mutation is a single SQL statement (one round trip, atomic), which
+matters once the database is remote rather than on localhost.
 """
 
 from __future__ import annotations
 
 from uuid import UUID
 
-import gel
+import asyncpg
 
 from app.models.collection import CollectionSummary
-from app.models.sticker import StickerKind, StickerOut, StickerWithStatus
+from app.models.sticker import StickerWithStatus
+from app.services.sticker_service import sticker_from_row
 
 
 class StickerNotFoundError(Exception):
     """Raised when a sticker code does not exist in the catalogue."""
 
 
-async def get_collection_for_user(
-    client: gel.AsyncIOClient, user_id: UUID
-) -> list[StickerWithStatus]:
+def _with_status(row: asyncpg.Record) -> StickerWithStatus:
+    return StickerWithStatus.from_sticker_and_quantity(
+        sticker=sticker_from_row(row), quantity=row["quantity"]
+    )
+
+
+async def get_collection_for_user(db: asyncpg.Pool, user_id: UUID) -> list[StickerWithStatus]:
     """Return every catalogue sticker with this user's quantity (0 if none).
 
-    Uses the `CollectionEntry` backlink from `Sticker` filtered to this user,
-    coalescing to 0 for stickers the user has never tapped (lazy rows).
+    A left join against this user's `collection_entries`, coalescing to 0 for
+    stickers the user has never tapped (lazy rows).
     """
-    result = await client.query(
+    rows = await db.fetch(
         """
-        select Sticker {
-            id, code, kind, team_code, sort_order,
-            quantity := assert_single((
-                select .<sticker[is CollectionEntry]
-                filter .user.id = <uuid>$user_id
-            ).quantity) ?? 0
-        }
-        order by .sort_order
+        select s.id, s.code, s.kind, s.team_code, s.sort_order,
+               coalesce(ce.quantity, 0)::int as quantity
+        from stickers s
+        left join collection_entries ce
+               on ce.sticker_id = s.id and ce.user_id = $1
+        order by s.sort_order
         """,
-        user_id=user_id,
+        user_id,
     )
-    return [
-        StickerWithStatus.from_sticker_and_quantity(
-            sticker=StickerOut(
-                id=row.id,
-                code=row.code,
-                kind=StickerKind(row.kind),
-                team_code=row.team_code,
-                sort_order=row.sort_order,
-            ),
-            quantity=row.quantity,
-        )
-        for row in result
-    ]
+    return [_with_status(row) for row in rows]
 
 
 async def get_sticker_status(
-    client: gel.AsyncIOClient, user_id: UUID, sticker_code: str
+    db: asyncpg.Pool, user_id: UUID, sticker_code: str
 ) -> StickerWithStatus | None:
     """Look up one sticker's current owned/not-owned status for this user,
     without changing anything - used by the "Check" quick-lookup, as
@@ -68,121 +62,99 @@ async def get_sticker_status(
 
     Returns None if `sticker_code` doesn't match any catalogue sticker.
     """
-    row = await client.query_single(
+    row = await db.fetchrow(
         """
-        select Sticker {
-            id, code, kind, team_code, sort_order,
-            quantity := assert_single((
-                select .<sticker[is CollectionEntry]
-                filter .user.id = <uuid>$user_id
-            ).quantity) ?? 0
-        }
-        filter .code = <str>$code
+        select s.id, s.code, s.kind, s.team_code, s.sort_order,
+               coalesce(ce.quantity, 0)::int as quantity
+        from stickers s
+        left join collection_entries ce
+               on ce.sticker_id = s.id and ce.user_id = $1
+        where s.code = $2
         """,
-        user_id=user_id,
-        code=sticker_code,
+        user_id,
+        sticker_code,
     )
-    if row is None:
-        return None
-    return StickerWithStatus.from_sticker_and_quantity(
-        sticker=StickerOut(
-            id=row.id,
-            code=row.code,
-            kind=StickerKind(row.kind),
-            team_code=row.team_code,
-            sort_order=row.sort_order,
-        ),
-        quantity=row.quantity,
-    )
+    return None if row is None else _with_status(row)
 
 
 async def increment_sticker(
-    client: gel.AsyncIOClient, user_id: UUID, sticker_code: str
+    db: asyncpg.Pool, user_id: UUID, sticker_code: str
 ) -> StickerWithStatus:
     """Normal tap: not-owned -> owned -> duplicate (quantity keeps rising).
 
-    Uses an upsert (`unless conflict ... else update`) so the very first tap
-    creates the lazy `CollectionEntry` row, and every subsequent tap just
-    increments `quantity`.
+    An upsert, so the very first tap creates the lazy `collection_entries`
+    row and every subsequent tap just increments `quantity`.
     """
-    sticker = await _get_sticker_by_code_or_raise(client, sticker_code)
-
-    row = await client.query_single(
+    row = await db.fetchrow(
         """
-        select (
-            insert CollectionEntry {
-                user := (select User filter .id = <uuid>$user_id),
-                sticker := (select Sticker filter .code = <str>$code),
-                quantity := 1,
-            }
-            unless conflict on ((.user, .sticker))
-            else (
-                update CollectionEntry
-                set {
-                    quantity := .quantity + 1,
-                    updated_at := datetime_current(),
-                }
-            )
-        ) { quantity }
+        with s as (
+            select id, code, kind, team_code, sort_order
+            from stickers where code = $2
+        ),
+        up as (
+            insert into collection_entries (user_id, sticker_id, quantity)
+            select $1, id, 1 from s
+            on conflict (user_id, sticker_id) do update
+                set quantity = collection_entries.quantity + 1,
+                    updated_at = now()
+            returning sticker_id, quantity
+        )
+        select s.id, s.code, s.kind, s.team_code, s.sort_order, up.quantity::int as quantity
+        from s join up on up.sticker_id = s.id
         """,
-        user_id=user_id,
-        code=sticker_code,
+        user_id,
+        sticker_code,
     )
-    return StickerWithStatus.from_sticker_and_quantity(sticker, row.quantity)
+    if row is None:
+        raise StickerNotFoundError(f"no sticker with code {sticker_code!r}")
+    return _with_status(row)
 
 
 async def decrement_sticker(
-    client: gel.AsyncIOClient, user_id: UUID, sticker_code: str
+    db: asyncpg.Pool, user_id: UUID, sticker_code: str
 ) -> StickerWithStatus:
     """Edit-mode tap: duplicate -> owned -> not-owned (undo an accidental tap).
 
     - quantity >= 2 -> decrement by 1.
     - quantity == 1 -> delete the row entirely (back to not-owned).
     - no row / quantity == 0 -> no-op.
+
+    The two data-modifying CTEs match disjoint rows (quantity > 1 vs <= 1),
+    so exactly one of them can fire for a given entry.
     """
-    sticker = await _get_sticker_by_code_or_raise(client, sticker_code)
-
-    current = await client.query_single(
+    row = await db.fetchrow(
         """
-        select CollectionEntry { quantity }
-        filter .user.id = <uuid>$user_id and .sticker.code = <str>$code
-        """,
-        user_id=user_id,
-        code=sticker_code,
-    )
-    if current is None:
-        return StickerWithStatus.from_sticker_and_quantity(sticker, 0)
-
-    if current.quantity <= 1:
-        await client.query(
-            """
-            delete CollectionEntry
-            filter .user.id = <uuid>$user_id and .sticker.code = <str>$code
-            """,
-            user_id=user_id,
-            code=sticker_code,
+        with s as (
+            select id, code, kind, team_code, sort_order
+            from stickers where code = $2
+        ),
+        dec as (
+            update collection_entries ce
+            set quantity = ce.quantity - 1, updated_at = now()
+            from s
+            where ce.sticker_id = s.id and ce.user_id = $1 and ce.quantity > 1
+            returning ce.quantity
+        ),
+        del as (
+            delete from collection_entries ce
+            using s
+            where ce.sticker_id = s.id and ce.user_id = $1 and ce.quantity <= 1
+            returning ce.id
         )
-        return StickerWithStatus.from_sticker_and_quantity(sticker, 0)
-
-    row = await client.query_single(
-        """
-        select (
-            update CollectionEntry
-            filter .user.id = <uuid>$user_id and .sticker.code = <str>$code
-            set {
-                quantity := .quantity - 1,
-                updated_at := datetime_current(),
-            }
-        ) { quantity }
+        select s.id, s.code, s.kind, s.team_code, s.sort_order,
+               coalesce((select quantity from dec), 0)::int as quantity
+        from s
         """,
-        user_id=user_id,
-        code=sticker_code,
+        user_id,
+        sticker_code,
     )
-    return StickerWithStatus.from_sticker_and_quantity(sticker, row.quantity)
+    if row is None:
+        raise StickerNotFoundError(f"no sticker with code {sticker_code!r}")
+    return _with_status(row)
 
 
 async def remove_one_duplicate(
-    client: gel.AsyncIOClient, user_id: UUID, sticker_code: str
+    db: asyncpg.Pool, user_id: UUID, sticker_code: str
 ) -> StickerWithStatus:
     """Trade away one duplicate: identical to `decrement_sticker`.
 
@@ -191,72 +163,45 @@ async def remove_one_duplicate(
     the checklist's Edit-mode undo, even though the underlying operation is
     the same.
     """
-    return await decrement_sticker(client, user_id, sticker_code)
+    return await decrement_sticker(db, user_id, sticker_code)
 
 
-async def count_owned_for_team(
-    client: gel.AsyncIOClient, user_id: UUID, team_code: str
-) -> int:
+async def count_owned_for_team(db: asyncpg.Pool, user_id: UUID, team_code: str) -> int:
     """How many of this team's stickers the user owns (quantity >= 1).
 
     Used to refresh a single team's progress tile after a tap/quick-add,
     without re-fetching the whole 992-sticker collection.
     """
-    return await client.query_single(
-        """
-        select count(
-            Sticker filter .team_code = <str>$team_code and exists (
-                select .<sticker[is CollectionEntry]
-                filter .user.id = <uuid>$user_id and .quantity >= 1
-            )
+    return int(
+        await db.fetchval(
+            """
+            select count(*)
+            from stickers s
+            join collection_entries ce
+              on ce.sticker_id = s.id and ce.user_id = $1 and ce.quantity >= 1
+            where s.team_code = $2
+            """,
+            user_id,
+            team_code,
         )
-        """,
-        team_code=team_code,
-        user_id=user_id,
     )
 
 
-async def get_collection_summary(
-    client: gel.AsyncIOClient, user_id: UUID
-) -> CollectionSummary:
+async def get_collection_summary(db: asyncpg.Pool, user_id: UUID) -> CollectionSummary:
     """Aggregate counters for the checklist page header."""
-    total_stickers = await client.query_single("select count(Sticker)")
-    total_collected = await client.query_single(
-        "select count(CollectionEntry filter .user.id = <uuid>$user_id)",
-        user_id=user_id,
-    )
-    total_duplicates = await client.query_single(
+    row = await db.fetchrow(
         """
-        select sum((
-            select CollectionEntry
-            filter .user.id = <uuid>$user_id and .quantity >= 2
-        ).quantity - 1) ?? 0
+        select
+            (select count(*) from stickers)::int                               as total_stickers,
+            (select count(*) from collection_entries where user_id = $1)::int  as total_collected,
+            (select coalesce(sum(quantity - 1), 0) from collection_entries
+              where user_id = $1 and quantity >= 2)::int                       as total_duplicates
         """,
-        user_id=user_id,
+        user_id,
     )
+    assert row is not None
     return CollectionSummary(
-        total_stickers=total_stickers,
-        total_collected=total_collected,
-        total_duplicates=total_duplicates,
-    )
-
-
-async def _get_sticker_by_code_or_raise(
-    client: gel.AsyncIOClient, sticker_code: str
-) -> StickerOut:
-    row = await client.query_single(
-        """
-        select Sticker { id, code, kind, team_code, sort_order }
-        filter .code = <str>$code
-        """,
-        code=sticker_code,
-    )
-    if row is None:
-        raise StickerNotFoundError(f"no sticker with code {sticker_code!r}")
-    return StickerOut(
-        id=row.id,
-        code=row.code,
-        kind=StickerKind(row.kind),
-        team_code=row.team_code,
-        sort_order=row.sort_order,
+        total_stickers=row["total_stickers"],
+        total_collected=row["total_collected"],
+        total_duplicates=row["total_duplicates"],
     )

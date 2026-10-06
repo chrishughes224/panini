@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-import gel
+import asyncpg
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
@@ -23,7 +23,7 @@ from app.templating import templates
 router = APIRouter(prefix="/duplicates", tags=["duplicates"])
 
 
-async def _build_duplicate_sections(client: gel.AsyncIOClient, user_id: UUID) -> list[ChecklistSection]:
+async def _build_duplicate_sections(client: asyncpg.Pool, user_id: UUID) -> list[ChecklistSection]:
     """Same section/team grouping as the checklist grid, but pre-filtered
     to only duplicate-owned stickers - sections and team blocks with no
     duplicates simply never appear, since `build_checklist_sections` only
@@ -37,7 +37,7 @@ async def _build_duplicate_sections(client: gel.AsyncIOClient, user_id: UUID) ->
 async def duplicates_index(
     request: Request,
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     sections = await _build_duplicate_sections(client, user.id)
     return templates.TemplateResponse(
@@ -50,7 +50,7 @@ async def remove_duplicate(
     request: Request,
     code: str,
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     """Remove one copy of a duplicate (the user has traded it away).
 
@@ -71,7 +71,7 @@ async def trade_away_sticker(
     request: Request,
     code: str = Form(...),
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     """Trade away one spare by typed code, from the floating Trade Away
     button - a low-friction alternative to finding the sticker's cell in

@@ -1,4 +1,4 @@
-"""Shared FastAPI dependencies: DB client access and current-user resolution.
+"""Shared FastAPI dependencies: DB pool access and current-user resolution.
 
 Routers depend on `get_current_user` (or `require_current_user`) rather than
 touching sessions/cookies directly, keeping that concern in one place.
@@ -6,24 +6,27 @@ touching sessions/cookies directly, keeping that concern in one place.
 
 from __future__ import annotations
 
-import gel
+import asyncpg
 from fastapi import Depends, HTTPException, Request, status
 
 from app.config import Settings, get_settings
 from app.models.user import UserOut
 from app.services import auth_service
-from app.services.db import get_client
+from app.services.db import get_pool
 
 
-def get_db_client() -> gel.AsyncIOClient:
-    """FastAPI dependency yielding the shared Gel client."""
-    return get_client()
+async def get_db_client() -> asyncpg.Pool:
+    """FastAPI dependency yielding the shared asyncpg pool.
+
+    (Name kept from the Gel era so routers and test overrides are unchanged.)
+    """
+    return await get_pool()
 
 
 async def get_current_user(
     request: Request,
     settings: Settings = Depends(get_settings),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ) -> UserOut | None:
     """Resolve the logged-in user from the session cookie, or None."""
     token = request.cookies.get(settings.session_cookie_name)

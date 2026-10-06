@@ -17,13 +17,22 @@ class Settings(BaseSettings):
     and validated on process startup.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # `extra="ignore"`: a local .env may still carry leftover keys (e.g. the
+    # retired GEL_DSN) which must not stop the app from starting.
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     host: str = "192.168.1.170"
     port: int = 8003
 
-    gel_dsn: str = "gel://localhost:5656"
-    gel_branch: str = "main"
+    # Postgres connection string. On Neon, use the *pooled* connection string
+    # (the host contains "-pooler"), e.g.
+    #   postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+    database_url: str = ""
+    # Per-process pool size. Kept small: on a serverless platform every warm
+    # instance holds its own pool, and Neon's pooler multiplexes them.
+    db_pool_max_size: int = 5
 
     session_cookie_name: str = "panini_session"
     session_ttl_hours: int = 24 * 30  # 30 days

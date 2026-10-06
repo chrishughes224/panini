@@ -6,7 +6,7 @@ the app rather than in-page interactions.
 
 from __future__ import annotations
 
-import gel
+import asyncpg
 from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
@@ -37,7 +37,7 @@ async def login_submit(
     username: str = Form(...),
     password: str = Form(...),
     settings: Settings = Depends(get_settings),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     try:
         payload = LoginRequest(username=username, password=password)
@@ -92,7 +92,7 @@ async def register_submit(
     email: str = Form(...),
     password: str = Form(...),
     settings: Settings = Depends(get_settings),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     try:
         payload = UserCreate(username=username, email=email, password=password)
@@ -131,7 +131,7 @@ async def register_submit(
 async def logout(
     request: Request,
     settings: Settings = Depends(get_settings),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     token = request.cookies.get(settings.session_cookie_name)
     if token is not None:

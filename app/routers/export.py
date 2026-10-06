@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 
-import gel
+import asyncpg
 from fastapi import APIRouter, Depends, Request
 
 from app.deps import get_db_client, require_current_user
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/export", tags=["export"])
 async def export_needs(
     request: Request,
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     stickers = await collection_service.get_collection_for_user(client, user.id)
     text = export_service.build_needs_list(stickers)
@@ -48,7 +48,7 @@ async def export_needs(
 async def export_swaps(
     request: Request,
     user: UserOut = Depends(require_current_user),
-    client: gel.AsyncIOClient = Depends(get_db_client),
+    client: asyncpg.Pool = Depends(get_db_client),
 ):
     stickers = await collection_service.get_collection_for_user(client, user.id)
     text = export_service.build_swaps_list(stickers)
