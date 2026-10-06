@@ -12,14 +12,19 @@ than failing with "attached to a different loop".
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
 
 import asyncpg
 from asyncpg.pool import PoolConnectionProxy
 
 from app.config import get_settings
 
-# A connection obtained either directly or from a pool.
-AnyConnection = asyncpg.Connection[asyncpg.Record] | PoolConnectionProxy[asyncpg.Record]
+# A connection obtained either directly or from a pool. The stubs make these
+# generic but the runtime classes are not subscriptable, hence the split.
+if TYPE_CHECKING:
+    AnyConnection = asyncpg.Connection[asyncpg.Record] | PoolConnectionProxy[asyncpg.Record]
+else:
+    AnyConnection = asyncpg.Connection | PoolConnectionProxy
 
 _pool: asyncpg.Pool | None = None
 _pool_loop: asyncio.AbstractEventLoop | None = None
