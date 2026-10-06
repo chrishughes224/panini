@@ -36,6 +36,23 @@ class Settings(BaseSettings):
 
     session_cookie_name: str = "panini_session"
     session_ttl_hours: int = 24 * 30  # 30 days
+    # Send the session cookie only over HTTPS. Keep True in production; set
+    # COOKIE_SECURE=false only for plain-http local/LAN development.
+    cookie_secure: bool = True
+
+    # Invite-only registration. Blank (the default) means registration is
+    # closed; set it to a secret phrase and new users must enter it to sign up.
+    registration_code: str = ""
+
+    # Brute-force protection (counted in the database so it works across
+    # serverless instances). Failures are counted inside the sliding window.
+    rate_limit_window_minutes: int = 15
+    login_max_failures_per_username: int = 10
+    login_max_failures_per_ip: int = 30
+    register_max_failures_per_ip: int = 10
+    # Only enable behind a proxy that overwrites X-Forwarded-For (e.g. Vercel);
+    # otherwise a client could spoof its address to dodge the per-IP limit.
+    trust_forwarded_for: bool = False
 
     # Used for signing/validating anything that needs a shared secret beyond
     # the DB-backed session token (kept for future use, e.g. CSRF tokens).

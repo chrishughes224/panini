@@ -4,6 +4,10 @@
 <div class="max-w-sm mx-auto mt-12">
     <div class="bg-paper text-ink rounded-lg p-8 shadow-lg">
         <h1 class="font-display text-3xl mb-1">CREATE ACCOUNT</h1>
+        {% if not registration_open %}
+        <p class="text-sm text-ink/70 mb-2">Registration is invite-only and currently closed.</p>
+        <p class="text-sm text-ink/70">Ask whoever runs this tracker for an invite code.</p>
+        {% else %}
         <p class="text-sm text-ink/70 mb-6">Start tracking your collection.</p>
 
         {% if error %}
@@ -14,8 +18,13 @@
 
         <form action="/register" method="post" class="space-y-4">
             <div>
+                <label for="invite_code" class="block text-sm font-medium mb-1">Invite code</label>
+                <input id="invite_code" name="invite_code" type="text" required autofocus autocomplete="off"
+                       class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
+            </div>
+            <div>
                 <label for="username" class="block text-sm font-medium mb-1">Username</label>
-                <input id="username" name="username" type="text" required autofocus minlength="3" maxlength="32"
+                <input id="username" name="username" type="text" required minlength="3" maxlength="32"
                        class="w-full rounded-md border border-slot px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-pitch">
             </div>
             <div>
@@ -34,6 +43,7 @@
                 Create account
             </button>
         </form>
+        {% endif %}
 
         <p class="text-sm text-ink/70 mt-6">
             Already have an account? <a href="/login" class="text-pitch-dark font-medium hover:underline">Log in</a>

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
 import asyncpg
 from argon2 import PasswordHasher
@@ -31,6 +32,12 @@ class InvalidCredentialsError(Exception):
 
 def hash_password(plain_password: str) -> str:
     return _hasher.hash(plain_password)
+
+
+@lru_cache(maxsize=1)
+def _dummy_hash() -> str:
+    """A valid hash of a throwaway password, used to equalise timing."""
+    return _hasher.hash("not-a-real-password")
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
@@ -84,7 +91,12 @@ async def authenticate_user(db: asyncpg.Pool, username: str, password: str) -> U
         """,
         username,
     )
-    if row is None or not verify_password(password, row["password_hash"]):
+    if row is None:
+        # Spend the same hashing time as a real check, so response time does
+        # not reveal which usernames exist.
+        verify_password(password, _dummy_hash())
+        raise InvalidCredentialsError("invalid username or password")
+    if not verify_password(password, row["password_hash"]):
         raise InvalidCredentialsError("invalid username or password")
 
     return _user_from_row(row)

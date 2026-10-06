@@ -11,7 +11,7 @@ async def test_migrations_are_idempotent(pool: asyncpg.Pool) -> None:
         assert await apply_migrations(conn) == []  # fixture already applied them
 
     versions = [r["version"] for r in await pool.fetch("select version from schema_migrations")]
-    assert versions == ["001_initial"]
+    assert versions == ["001_initial", "002_auth_failures"]
 
 
 async def test_seeding_twice_does_not_duplicate_stickers(pool: asyncpg.Pool) -> None:

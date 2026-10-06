@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import httpx
 
-FORM = {"username": "alice", "email": "alice@example.com", "password": "correct-horse-1"}
+FORM = {
+    "username": "alice",
+    "email": "alice@example.com",
+    "password": "correct-horse-1",
+    "invite_code": "test-invite",
+}
 
 
 async def test_protected_pages_require_login(http: httpx.AsyncClient) -> None:

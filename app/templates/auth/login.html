@@ -29,9 +29,11 @@
             </button>
         </form>
 
+        {% if registration_open %}
         <p class="text-sm text-ink/70 mt-6">
             New here? <a href="/register" class="text-pitch-dark font-medium hover:underline">Create an account</a>
         </p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -18,10 +18,13 @@ import pgserver
 import pytest
 import pytest_asyncio
 
+from app.config import Settings, get_settings
 from app.deps import get_db_client
 from app.main import app
 from app.services.migrations import apply_migrations
 from app.services.seeding import seed_catalogue
+
+INVITE_CODE = "test-invite"
 
 
 async def _prepare_database(uri: str) -> None:
@@ -56,20 +59,41 @@ async def pool(database_uri: str) -> AsyncIterator[asyncpg.Pool]:
     finally:
         # Cascades to sessions and collection_entries; stickers are kept.
         await pool.execute("truncate users cascade")
+        await pool.execute("truncate auth_failures")
         await pool.close()
 
 
-@pytest_asyncio.fixture
-async def http(pool: asyncpg.Pool) -> AsyncIterator[httpx.AsyncClient]:
-    """An ASGI client wired to the test pool (cookies persist per client)."""
+@pytest.fixture
+def settings() -> Settings:
+    """Test settings: isolated from any real .env, invite code set, small
+    rate-limit thresholds so those tests stay fast. Tests may mutate it."""
+    return Settings(
+        _env_file=None,
+        database_url="",
+        registration_code=INVITE_CODE,
+        cookie_secure=True,
+        trust_forwarded_for=True,
+        login_max_failures_per_username=3,
+        login_max_failures_per_ip=5,
+        register_max_failures_per_ip=3,
+    )
 
-    async def _override() -> asyncpg.Pool:
+
+@pytest_asyncio.fixture
+async def http(pool: asyncpg.Pool, settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
+    """An ASGI client wired to the test pool/settings (cookies persist per client).
+
+    Uses an https base URL because the session cookie is `Secure`.
+    """
+
+    async def _db() -> asyncpg.Pool:
         return pool
 
-    app.dependency_overrides[get_db_client] = _override
+    app.dependency_overrides[get_db_client] = _db
+    app.dependency_overrides[get_settings] = lambda: settings
     transport = httpx.ASGITransport(app=app)
     try:
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
             yield client
     finally:
         app.dependency_overrides.clear()
@@ -80,7 +104,12 @@ async def logged_in(http: httpx.AsyncClient) -> httpx.AsyncClient:
     """`http`, already registered and logged in as a fresh user."""
     response = await http.post(
         "/register",
-        data={"username": "alice", "email": "alice@example.com", "password": "correct-horse-1"},
+        data={
+            "username": "alice",
+            "email": "alice@example.com",
+            "password": "correct-horse-1",
+            "invite_code": INVITE_CODE,
+        },
     )
     assert response.status_code == 303
     return http

@@ -80,14 +80,14 @@ async def test_export_needs_and_swaps_render(logged_in: httpx.AsyncClient) -> No
 async def test_data_is_private_per_user(http: httpx.AsyncClient, pool: asyncpg.Pool) -> None:
     await http.post(
         "/register",
-        data={"username": "alice", "email": "a@example.com", "password": "correct-horse-1"},
+        data={"username": "alice", "email": "a@example.com", "password": "correct-horse-1", "invite_code": "test-invite"},
     )
     await _tap(http, "MEX1", 2)
     await http.post("/logout")
 
     await http.post(
         "/register",
-        data={"username": "bob", "email": "b@example.com", "password": "correct-horse-1"},
+        data={"username": "bob", "email": "b@example.com", "password": "correct-horse-1", "invite_code": "test-invite"},
     )
     page = await http.get("/duplicates")
 
