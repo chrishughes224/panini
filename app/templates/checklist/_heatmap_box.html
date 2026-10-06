@@ -6,15 +6,24 @@
      the "with" blocks that set them). These three sections are condensed
      into one shared box (styled by the caller) rather than each carrying
      its own background/padding, to avoid tripling the box chrome's height.
-     Same green/paper colours as the main checklist's sticker-slot cells. -->
-<div id="{{ heatmap_id }}"{% if oob %} hx-swap-oob="true"{% endif %}>
+     Same green/paper colours as the main checklist's sticker-slot cells.
+
+     Layout: in the box's grid layout (below lg) Countries sits on the left
+     spanning two rows, with Special and Promo stacked on its right; from lg
+     the box is a plain column and these grid-placement classes are ignored.
+     They live HERE, not in the caller, because the live-update (OOB) swap
+     re-renders this partial and would otherwise drop the caller's classes. -->
+<div id="{{ heatmap_id }}"{% if oob %} hx-swap-oob="true"{% endif %}
+     class="{% if heatmap_id == 'heatmap-teams' %}col-start-1 row-start-1 row-span-2{% elif heatmap_id == 'heatmap-special' %}col-start-2 row-start-1{% else %}col-start-2 row-start-2{% endif %}">
     <h4 class="text-[0.65rem] uppercase tracking-wider text-paper/40 mb-1">{{ heatmap_title }}</h4>
     <!-- Fixed whole-pixel cell size (not minmax(0, 1fr)/aspect-square) -
          `1fr` columns round sub-pixel remainders differently per column to
          make the total add up to the container width, which at ~7px cells
          made some squares visibly wider than others. Fixed px columns and
-         rows have no remainder to distribute, so every cell is identical. -->
-    <div class="grid gap-px" style="grid-template-columns: repeat(20, 7px); grid-auto-rows: 7px;">
+         rows have no remainder to distribute, so every cell is identical.
+         The size is the --hm-cell variable (7px, or 5px on phones - still a
+         whole number of pixels), set in base.html. -->
+    <div class="grid gap-px" style="grid-template-columns: repeat(20, var(--hm-cell, 7px)); grid-auto-rows: var(--hm-cell, 7px);">
         {% for owned in heatmap_cells %}
         <div class="rounded-[1px] {% if owned is none %}bg-transparent{% elif owned %}bg-[#22C55E]{% else %}bg-[#F3EEDF]/25{% endif %}"></div>
         {% endfor %}

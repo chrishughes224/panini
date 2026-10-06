@@ -128,3 +128,68 @@ async def test_completed_group_flags_every_team_tile_complete(
     assert complete == set(teams_in_a)
     incomplete = re.findall(r'id="team-progress-[A-Z]+"\s+data-complete="false"', page.text)
     assert len(incomplete) == 44  # the other 11 groups x 4 teams
+
+
+# --- responsive layout (phones) ----------------------------------------------
+
+async def test_page_has_no_fixed_minimum_width_that_forces_sideways_scroll(
+    logged_in: httpx.AsyncClient,
+) -> None:
+    page = await logged_in.get("/checklist")
+
+    assert "min-w-[750px]" not in page.text
+    assert "overflow-x-auto" not in page.text.split('id="summary-bar"')[0].split("<main")[-1]
+
+
+async def test_group_cards_are_two_columns_on_phones_and_scale_up(
+    logged_in: httpx.AsyncClient,
+) -> None:
+    page = await logged_in.get("/checklist")
+
+    # 2 x 6 on phones, 3 x 4 on tablets, 4 x 3 on desktop.
+    assert "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" in page.text
+
+
+async def test_logged_in_pages_offer_a_hamburger_menu_with_every_destination(
+    logged_in: httpx.AsyncClient,
+) -> None:
+    page = await logged_in.get("/checklist")
+    menu = page.text.split('id="mobile-menu"')[1].split("</details>")[0]
+
+    assert "md:hidden" in page.text.split('id="mobile-menu"')[1][:200]
+    for expected in ('href="/checklist"', 'href="/duplicates"', 'hx-get="/export/needs"',
+                     'hx-get="/export/swaps"', 'action="/logout"'):
+        assert expected in menu
+
+
+async def test_logged_out_pages_have_no_menu(http: httpx.AsyncClient) -> None:
+    page = await http.get("/login")
+
+    assert 'id="mobile-menu"' not in page.text
+
+
+async def test_heatmap_layout_classes_survive_a_live_update_swap(
+    logged_in: httpx.AsyncClient,
+) -> None:
+    """The tap response re-renders each heatmap out-of-band. Their grid
+    placement classes must be inside that fragment, or the compact phone
+    layout would break after the first tap."""
+    page = await logged_in.get("/checklist")
+    swap = await logged_in.post("/checklist/toggle/MEX1", data={"edit_mode": "false"})
+
+    for heatmap_id, classes in (
+        ("heatmap-teams", "col-start-1 row-start-1 row-span-2"),
+        ("heatmap-special", "col-start-2 row-start-1"),
+        ("heatmap-promo", "col-start-2 row-start-2"),
+    ):
+        initial = re.search(rf'<div id="{heatmap_id}"[^>]*class="([^"]*)"', page.text)
+        swapped = re.search(rf'<div id="{heatmap_id}" hx-swap-oob="true"\s+class="([^"]*)"', swap.text)
+        assert initial is not None and swapped is not None, heatmap_id
+        assert initial.group(1) == swapped.group(1) == classes
+
+
+async def test_heatmap_cells_use_whole_pixel_size_variable(logged_in: httpx.AsyncClient) -> None:
+    page = await logged_in.get("/checklist")
+
+    assert "repeat(20, var(--hm-cell, 7px))" in page.text
+    assert "--hm-cell: 5px" in page.text  # phones; still a whole number of pixels

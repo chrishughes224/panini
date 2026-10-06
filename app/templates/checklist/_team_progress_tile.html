@@ -1,11 +1,11 @@
 <div id="team-progress-{{ team_progress.code }}"{% if oob %} hx-swap-oob="true"{% endif %}
      data-complete="{{ 'true' if team_progress.total > 0 and team_progress.collected >= team_progress.total else 'false' }}"
-     class="flex items-center gap-2 pr-1">
+     class="flex items-center gap-1.5 sm:gap-2 pr-1">
     <img src="https://flagcdn.com/w40/{{ team_progress.iso_code }}.png" alt=""
          class="w-6 h-4 rounded-sm object-cover shrink-0 border border-paper/10">
-    <span class="font-medium text-paper/90 text-xs w-9 shrink-0">{{ team_progress.code }}</span>
+    <span class="font-medium text-paper/90 text-xs w-8 sm:w-9 shrink-0">{{ team_progress.code }}</span>
     <div class="flex-1 h-1.5 rounded-full bg-slot/20 overflow-hidden">
         <div class="h-full bg-pitch rounded-full transition-all duration-300" style="width: {{ team_progress.percent }}%"></div>
     </div>
-    <span class="text-paper/50 text-[0.65rem] w-9 text-right shrink-0">{{ team_progress.collected }}/{{ team_progress.total }}</span>
+    <span class="text-paper/50 text-[0.65rem] w-8 sm:w-9 text-right shrink-0">{{ team_progress.collected }}/{{ team_progress.total }}</span>
 </div>

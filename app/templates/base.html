@@ -117,6 +117,12 @@
             background-color: rgba(34, 197, 94, 0.18);
             box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.35);
         }
+        /* Heatmap cell size: whole pixels (see _heatmap_box.html). Smaller on
+           phones so the compact heatmap layout fits a ~320px-wide card area. */
+        :root { --hm-cell: 7px; }
+        @media (max-width: 639px) {
+            :root { --hm-cell: 5px; }
+        }
         @media (prefers-reduced-motion: reduce) {
             .sticker-slot { transition: none; }
             .sticker-slot:active { transform: none; }
@@ -140,19 +146,65 @@
 </head>
 <body class="h-full bg-ink text-paper font-sans">
     <header class="border-b border-ink-light bg-ink">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <a href="/checklist" class="flex items-center gap-2.5 font-display text-xl tracking-wide text-paper">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <a href="/checklist" class="flex items-center gap-2 sm:gap-2.5 min-w-0 font-display text-lg sm:text-xl tracking-wide text-paper">
                 <img src="https://upload.wikimedia.org/wikipedia/en/1/17/2026_FIFA_World_Cup_emblem.svg"
-                     alt="" class="h-8 w-auto shrink-0">
-                <span>2026 STICKER BOOK</span>
+                     alt="" class="h-7 sm:h-8 w-auto shrink-0">
+                <span class="whitespace-nowrap">2026 STICKER BOOK</span>
                 <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/Panini_Group_logo.svg"
-                     alt="" class="h-5 w-auto shrink-0">
+                     alt="" class="hidden min-[340px]:block h-4 sm:h-5 w-auto shrink-0">
             </a>
             {% if user %}
-            <nav class="flex items-center gap-4 text-sm font-medium">
+            <!-- Phone/small-tablet navigation: a hamburger menu (a <details>, so
+                 no framework needed). The full inline nav takes over at md. -->
+            <details id="mobile-menu" data-menu class="group relative md:hidden shrink-0">
+                <summary aria-label="Menu"
+                         class="list-none cursor-pointer select-none flex items-center justify-center w-10 h-10 rounded-md hover:bg-ink-light transition-colors [&::-webkit-details-marker]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" class="w-6 h-6 group-open:hidden">
+                        <line x1="4" y1="7" x2="20" y2="7"></line>
+                        <line x1="4" y1="12" x2="20" y2="12"></line>
+                        <line x1="4" y1="17" x2="20" y2="17"></line>
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" class="w-6 h-6 hidden group-open:block">
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                    </svg>
+                </summary>
+                <div class="absolute right-0 mt-2 w-56 bg-paper text-ink rounded-lg shadow-xl overflow-hidden z-30 text-sm font-medium">
+                    <a href="/checklist" class="block px-4 py-3 hover:bg-ink/5 transition-colors">Checklist</a>
+                    <a href="/duplicates" class="block px-4 py-3 hover:bg-ink/5 transition-colors">Duplicates</a>
+                    <div class="border-t border-ink/10 px-4 pt-2.5 pb-1 text-[0.65rem] uppercase tracking-wider text-ink/50">Export</div>
+                    <button type="button"
+                            hx-get="/export/needs"
+                            hx-target="#export-dialog-content"
+                            hx-swap="innerHTML"
+                            hx-on::after-request="document.getElementById('export-dialog').showModal()"
+                            onclick="this.closest('details').removeAttribute('open')"
+                            class="block w-full text-left px-4 py-3 hover:bg-ink/5 transition-colors">
+                        Needs list
+                    </button>
+                    <button type="button"
+                            hx-get="/export/swaps"
+                            hx-target="#export-dialog-content"
+                            hx-swap="innerHTML"
+                            hx-on::after-request="document.getElementById('export-dialog').showModal()"
+                            onclick="this.closest('details').removeAttribute('open')"
+                            class="block w-full text-left px-4 py-3 hover:bg-ink/5 transition-colors">
+                        Swaps list
+                    </button>
+                    <form action="/logout" method="post" class="border-t border-ink/10">
+                        <button type="submit" class="block w-full text-left px-4 py-3 hover:bg-ink/5 transition-colors">
+                            Log out
+                        </button>
+                    </form>
+                </div>
+            </details>
+            <nav class="hidden md:flex items-center gap-4 text-sm font-medium">
                 <a href="/checklist" class="hover:text-pitch transition-colors">Checklist</a>
                 <a href="/duplicates" class="hover:text-gold transition-colors">Duplicates</a>
-                <details class="relative">
+                <details data-menu class="relative">
                     <summary class="list-none cursor-pointer hover:text-gold transition-colors select-none">Export</summary>
                     <div class="absolute right-0 mt-2 w-32 bg-paper text-ink rounded-md shadow-lg overflow-hidden z-10">
                         <button type="button"
@@ -188,6 +240,21 @@
     <main class="max-w-5xl mx-auto px-4 py-6">
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        // Header dropdowns (the phone hamburger and the desktop Export menu)
+        // are plain <details>; close any open one on an outside tap or Escape.
+        document.addEventListener('click', (event) => {
+            document.querySelectorAll('details[data-menu][open]').forEach((menu) => {
+                if (!menu.contains(event.target)) menu.removeAttribute('open');
+            });
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('details[data-menu][open]').forEach((menu) => menu.removeAttribute('open'));
+            }
+        });
+    </script>
 
     <dialog id="export-dialog" class="bg-paper text-ink rounded-lg p-0 max-w-md w-[90vw] max-h-[85vh] overflow-y-auto backdrop:bg-ink/60">
         <div class="p-5" id="export-dialog-content"></div>

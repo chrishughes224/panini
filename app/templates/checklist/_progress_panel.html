@@ -5,14 +5,18 @@
      Promo) stacked with their own headings. The heatmap box's height is
      dictated by its own content, not the groups grid, so a narrative box
      sits underneath the Group I-L row to soak up the leftover height and
-     keep both columns' bottoms level. Always fully visible, no collapse. -->
-<div class="mb-6 flex flex-col gap-3 overflow-x-auto">
-    <div class="min-w-[750px]">
+     keep both columns' bottoms level. Always fully visible, no collapse.
+
+     Responsive: below lg everything stacks (summary, groups, then the
+     heatmap box); the groups grid is 2 columns x 6 on phones, 3 x 4 on
+     tablets and 4 x 3 from lg, where the heatmap box sits beside it. -->
+<div class="mb-6 flex flex-col gap-3">
+    <div>
         {% include "checklist/_summary.html" %}
     </div>
-    <div class="flex gap-3 items-start min-w-[750px]">
-        <div class="flex-1 flex flex-col gap-3">
-            <div class="grid grid-cols-4 gap-3">
+    <div class="flex flex-col lg:flex-row gap-3 lg:items-start">
+        <div class="flex-1 min-w-0 flex flex-col gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {% for group in group_progress %}
                 <div class="group-card bg-ink-light/50 rounded-lg p-3">
                     <h4 class="text-[0.65rem] uppercase tracking-wider text-paper/40 mb-2">Group {{ group.letter }}</h4>
@@ -33,7 +37,10 @@
                 </p>
             </div>
         </div>
-        <div class="bg-ink-light/50 rounded-lg p-3 flex flex-col gap-2 shrink-0 items-start">
+        <!-- Below lg: a compact 2-column grid (Countries left, Special + Promo
+             stacked right - placement classes live in _heatmap_box.html).
+             From lg: the plain right-hand column. -->
+        <div class="bg-ink-light/50 rounded-lg p-3 grid grid-cols-[auto_auto] grid-rows-[auto_1fr] justify-center gap-x-5 gap-y-2 items-start lg:flex lg:flex-col lg:justify-start lg:gap-2 lg:shrink-0">
             {% with heatmap_id="heatmap-special", heatmap_title="Special/Tournament", heatmap_cells=heatmap.special_tournament %}
             {% include "checklist/_heatmap_box.html" %}
             {% endwith %}
